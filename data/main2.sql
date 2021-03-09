@@ -32,6 +32,20 @@ GROUP BY teamid
 
 
 -- The player Eddie Gaedel played only once for the team id SLA
+-- Other Codes to see
+/*
+
+SELECT namefirst, namelast, namegiven, height, a.g_all, a.teamid, t.name
+FROM people AS p
+JOIN appearances AS a
+ON p.playerid = a.playerid
+JOIN teams AS t
+ON a.teamid = t.teamid
+GROUP BY namefirst, namelast, namegiven, height, a.g_all, a.teamid, t.name
+ORDER BY height
+LIMIT 5;
+*/
+
 
 -- The below Query is not correct with the teams table in terms of the count
 SELECT count(a.playerid = 'gaedeed01'), a.teamid
@@ -114,10 +128,12 @@ USING (playerid)
 WHERE sch.schoolname = 'Vanderbilt University'
 GROUP BY p.namefirst, p.namelast
 ORDER BY total_salary DESC;
+
+
 */
 
 /*Which Vanderbilt player earned the most money in the majors? */
--- Based on above Query David Price earned the highest salary of 82,851,296
+-- Based on above Query David Price earned the highest salary of 81,851,296
 
 -------------------------------------------------------
 /* Q4 Using the fielding table, group players into three groups based on their position:
@@ -186,13 +202,69 @@ Consider only players who attempted at least 20 stolen bases.
 */
 
 
--- Use of Batting table (SB&CS) & Pitching table(SB&CS) SB=Stolen Bases, CS= Caught Stolen
+-- Use of Batting table (SB&CS) SB=Stolen Bases, CS= Caught Stolen
 -- Use of teams table where (SB&CS)
 -- Use of Batting Post and Fielding Post ()
-SELECT yearid,
-	   CS,
-	   SB
-	   playerid
+WITH batting_sum AS ( SELECT yearid,
+							 playerid,
+					 		 teamid,
+							 cs,
+							 sb,
+					 		 sum(cs+sb) AS attempts
+						FROM batting
+					 	WHERE yearid = '2016'
+					 	GROUP BY yearid, playerid, cs, sb, teamid
+						ORDER BY attempts DESC)
+
+SELECT b.playerid, 
+	  	p.namefirst, p.namelast, p.namegiven, b.sb, b.cs, b.attempts,
+	   cast(b.sb as float)/cast(b.attempts as float) * 100 AS success_perc
+FROM batting_sum AS b
+JOIN people AS p
+USING(playerid)
+WHERE b.sb >=20
+GROUP BY  b.playerid, p.namefirst, p.namelast, p.namegiven,b.sb, b.cs, b.attempts
+ORDER BY success_perc DESC
+
+-- Chris Owings with player id owingch01 has the highest success rate in stealing bases in the year 2016
+/* Q7
+From 1970 – 2016, what is the largest number of wins for a team that did not win the world series?
+What is the smallest number of wins for a team that did win the world series?
+Doing this will probably result in an unusually small number of wins for a world series champion – determine why this is the case. 
+*/
+
+-- Total wins by team by yearid>1970 sorted by teamid, yearid
+SELECT teamid, yearid, sum(w) as total_wins
 FROM teams
-ORDER BY playerid
-	   
+WHERE yearid >='1970'
+GROUP BY teamid, yearid
+ORDER BY total_wins DESC
+
+-- Refine the above query to sum wins by team only cumulatively
+SELECT teamid, name, sum(w) as total_wins
+FROM teams
+WHERE yearid >='1970'
+GROUP BY teamid, name
+ORDER BY total_wins DESC
+
+
+--World series win count by team
+SELECT teamid, name, count(wswin) as t_ws_wins
+from teams
+WHERE yearid >= '1970' AND wswin ='Y'
+GROUP  BY teamid, name
+ORDER BY t_ws_wins DESC
+
+--World series wins by teams and year
+SELECT teamid, yearid, wswin, name
+from teams
+WHERE yearid >= '1970' AND wswin ='Y'
+ORDER BY teamid
+
+
+/*
+Then redo your query, excluding the problem year.
+How often from 1970 – 2016 was it the case that a team with the most wins also won the world series? 
+What percentage of the time?
+*/
+
