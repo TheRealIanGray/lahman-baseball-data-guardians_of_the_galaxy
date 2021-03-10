@@ -64,8 +64,8 @@ order by Position*/
 				Do the same for home runs per game. 
 				Do you see any trends?*/
 
-/*select round(sum(cast(soa as decimal)) / sum(cast(g as decimal)), 2) as avg_strikout_by_game, 
-				round(sum(cast(hr as decimal)) / sum(cast(g as decimal)), 2) as avg_homerun_by_game,
+/*select round((sum(cast(so as decimal)))/sum(cast(g as decimal)/2), 2) as avg_strikout_by_game, 
+				round(sum(cast(hr as decimal)) / sum(cast(g as decimal)/2), 2) as avg_homerun_by_game,
 				left(cast(yearid as varchar(4)), 3) || '0s' as decade
 from teams as t
 group by decade
@@ -88,7 +88,7 @@ order by stolen desc*/
 				
 /*Question 7- From 1970 – 2016, what is the largest number of wins for a team that did not win the world series?*/
 				
-/*select teamid, yearid, w, WSWin
+/*select teamid, yearid, w, WSWin, name
 from teams
 where yearid > 1969
 and wswin = 'N'
@@ -115,7 +115,7 @@ order by yearid desc*/
 /*Then redo your query, excluding the problem year. How often from 1970 – 2016 was it the case that 
 				a team with the most wins also won the world series? What percentage of the time?*/
 
-/*with w as (select yearid, max(w) as ww, WSWin
+with w as (select yearid, max(w) as ww, WSWin
 		from teams
 		where yearid > 1969
 		and yearid != 1981
@@ -135,6 +135,12 @@ select round(sum(case when ww > lw then cast('1.0' as decimal)
 from w
 join l
 on w.yearid = l.yearid*/
+
+where (SELECT max(w) as max_wins, wswin, yearid
+FROM teams
+WHERE yearid >='1970' AND yearid<>'1981'
+GROUP BY yearid,  wswin
+ORDER BY yearid)
 				
 /*Question 8- Using the attendance figures from the homegames table, find the teams and parks which had the 
 				top 5 average attendance per game in 2016 
