@@ -181,19 +181,47 @@ WITH pitching_groups AS (SELECT yearid,
 						 	 WHEN yearid BETWEEN 2000 AND 2009 THEN '2000s'
 						 	 WHEN yearid >= 2010 THEN '2010s'
 						END AS decades,
-						 so,
-						 hr
-						FROM pitching
+						so, -- Strike out
+						hr,-- home runs,
+						soa, -- Strike outs by Pitcher
+						 g
+						FROM teams
 						) 
 SELECT pitching_groups.decades,
-	   ROUND(AVG(so),2) AS avg_strikeouts,
-	   ROUND(AVG(hr),2) AS avg_homeruns
+	 ROUND((sum(CAST (so AS dec)))/(sum(CAST (g AS dec))/2),2) AS avg_strikeouts, -- Divide by 2 for each team
+	ROUND(sum(CAST (hr AS dec))/(sum(CAST (g AS dec))/2),2) AS avg_homeruns
+
+	   --avg_strikeouts,
+	   --avg_homeruns
 FROM pitching_groups
 WHERE yearid >= 1920
 GROUP BY pitching_groups.decades
 ORDER BY pitching_groups.decades
 
 -- Both Strikeouts and Homeruns peak in 60's before tapering off as decades progress
+
+-- Other code to look
+/*WITH decades as (	
+				SELECT 	generate_series(1920,2010,10) as low_b,
+						generate_series(1929,2019,10) as high_b)
+SELECT 	low_b as decade,
+		--SUM(so) as strikeouts,
+		--SUM(g)/2 as games,  -- used last 2 lines to check that each step adds correctly
+		ROUND(SUM(so::numeric)/(sum(g::numeric)/2),2) as SO_per_game,  -- note divide by 2, since games are played by 2 teams
+		ROUND(SUM(hr::numeric)/(sum(g::numeric)/2),2) as hr_per_game
+FROM decades LEFT JOIN teams
+	ON yearid BETWEEN low_b AND high_b
+GROUP BY decade
+ORDER BY decade;
+
+--Other way to look for decade
+-- floor 1922/10 = 192.2, FLOOR rounds is DOWN to nearest year, multiply by 10 to get back to 1920.
+select floor(yearid/10)*10 as decade--, yearid
+from batting
+where yearid >= 1920
+group by decade;--, yearid;
+
+*/
 /* Q6
 Find the player who had the most success stealing bases in 2016, 
 where success is measured as the percentage of stolen base attempts which are successful. 
@@ -227,6 +255,8 @@ GROUP BY  b.playerid, p.namefirst, p.namelast, p.namegiven,b.sb, b.cs, b.attempt
 ORDER BY success_perc DESC
 
 -- Chris Owings with player id owingch01 has the highest success rate in stealing bases in the year 2016
+
+
 /* Q7
 From 1970 – 2016, what is the largest number of wins for a team that did not win the world series?
 What is the smallest number of wins for a team that did win the world series?
@@ -234,19 +264,67 @@ Doing this will probably result in an unusually small number of wins for a world
 */
 
 -- Total wins by team by yearid>1970 sorted by teamid, yearid
-SELECT teamid, yearid, sum(w) as total_wins
+SELECT teamid, yearid, w as total_wins
 FROM teams
 WHERE yearid >='1970'
-GROUP BY teamid, yearid
 ORDER BY total_wins DESC
 
--- Refine the above query to sum wins by team only cumulatively
-SELECT teamid, name, sum(w) as total_wins
+-- Refine the above query to sum wins by team only cumulatively and didn't win the World Series (Largest Wins )
+SELECT teamid, name, w as total_wins
 FROM teams
-WHERE yearid >='1970'
-GROUP BY teamid, name
+WHERE yearid >='1970' AND wswin='N'
 ORDER BY total_wins DESC
+-- ANS is SEA Seattle Mariners than won 116 games
 
+-- Refine the above query to sum wins by team only cumulatively and did win the World Series (Smallest Wins )
+SELECT teamid, name, w as total_wins, wswin
+FROM teams
+WHERE yearid >='1970' AND wswin='Y'
+ORDER BY total_wins
+-- ANS is LAN -Los Angeles Dodgers than won 63 games
+
+-- Refine the above query adding Yearid to sum wins by team only cumulatively and did win the World Series (Smallest Wins )
+SELECT teamid, name, yearid, w as total_wins, wswin, g
+FROM teams
+WHERE yearid >='1970' AND wswin='Y'
+ORDER BY yearid
+-- By googling year id, the players were on strike in 1981 and hence the lower total no.of wins with 110games vs 160's games
+
+-- Redo the above query adding Yearid skipping 1981 to sum wins by team only cumulatively and did win the World Series (Smallest Wins )
+SELECT teamid, name, yearid, w as total_wins, wswin, g
+FROM teams
+WHERE yearid >='1970' AND yearid<>'1981' AND wswin='Y'
+ORDER BY total_wins DESC
+-- By googling year id, the players were on strike in 1981 and hence the lower total no.of wins with 110games vs 160's games
+
+-- Find the Max wins that also was part of WS from 1970-2016
+SELECT max(w) as max_wins, wswin, yearid
+FROM teams
+WHERE yearid >='1970' AND yearid<>'1981'
+GROUP BY yearid,  wswin
+ORDER BY yearid
+
+--Codes to See
+with w as (select yearid, max(w) as ww, WSWin
+		from teams
+		where yearid > 1969
+		and yearid != 1981
+		and wswin = 'Y'
+		group by yearid, wswin
+		order by yearid desc),
+	l as (select yearid, max(w) as lw, WSWin
+		from teams
+		where yearid > 1969
+		and yearid != 1981
+		and wswin = 'N'
+		group by yearid, wswin
+		order by yearid desc)
+select round(sum(case when ww > lw then cast('1.0' as decimal)
+			when ww <= lw then cast('0.0' as decimal) end)/
+			count(distinct w.yearid), 2)
+from w
+join l
+on w.yearid = l.yearid
 
 --World series win count by team
 SELECT teamid, name, count(wswin) as t_ws_wins
@@ -268,3 +346,50 @@ How often from 1970 – 2016 was it the case that a team with the most wins also
 What percentage of the time?
 */
 
+WITH decades as (	
+				SELECT 	generate_series(1920,2010,10) as low_b,
+						generate_series(1929,2019,10) as high_b)
+SELECT 	low_b as decade,
+		--SUM(so) as strikeouts,
+		--SUM(g)/2 as games,  -- used last 2 lines to check that each step adds correctly
+		ROUND(SUM(so::numeric)/(sum(g::numeric)/2),2) as SO_per_game,  -- note divide by 2, since games are played by 2 teams
+		ROUND(SUM(hr::numeric)/(sum(g::numeric)/2),2) as hr_per_game
+FROM decades LEFT JOIN teams
+	ON yearid BETWEEN low_b AND high_b
+GROUP BY decade
+ORDER BY decade;
+
+/*Using the attendance figures from the homegames table,
+find the teams and parks which had the top 5 average attendance per game in 2016
+(where average attendance is defined as total attendance divided by number of games). 
+Only consider parks where there were at least 10 games played. 
+Report the park name, team name, and average attendance. Repeat for the lowest 5 average attendance.*/
+
+
+-- Top Attendance by Park  
+WITH p AS (
+			SELECT park_name, park, city
+			FROM parks)
+--CTE for park info
+SELECT p.park_name, sum(attendance)/sum(games) AS att_per_game, p.city
+FROM homegames
+JOIN p
+using (park)
+WHERE year='2016'
+GROUP BY p.park_name, p.city
+ORDER BY att_per_game DESC
+LIMIT 5;
+
+-- Top Attendance by teams 
+WITH t AS (
+			SELECT park_name, park, city
+			FROM parks)
+--CTE for park info
+SELECT p.park_name, sum(attendance)/sum(games) AS att_per_game, p.city
+FROM homegames
+JOIN p
+using (park)
+WHERE year='2016'
+GROUP BY p.park_name, p.city
+ORDER BY att_per_game DESC
+LIMIT 5;
