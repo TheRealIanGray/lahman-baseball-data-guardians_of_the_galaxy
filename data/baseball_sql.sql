@@ -115,7 +115,7 @@ order by yearid desc*/
 /*Then redo your query, excluding the problem year. How often from 1970 – 2016 was it the case that 
 				a team with the most wins also won the world series? What percentage of the time?*/
 
-with w as (select yearid, max(w) as ww, WSWin
+/*with w as (select yearid, max(w) as ww, WSWin
 		from teams
 		where yearid > 1969
 		and yearid != 1981
@@ -136,11 +136,11 @@ from w
 join l
 on w.yearid = l.yearid*/
 
-where (SELECT max(w) as max_wins, wswin, yearid
+/*where (SELECT max(w) as max_wins, wswin, yearid
 FROM teams
 WHERE yearid >='1970' AND yearid<>'1981'
 GROUP BY yearid,  wswin
-ORDER BY yearid)
+ORDER BY yearid)*/
 				
 /*Question 8- Using the attendance figures from the homegames table, find the teams and parks which had the 
 				top 5 average attendance per game in 2016 
@@ -221,4 +221,68 @@ join teams as t
 on m.teamid = t.teamid
 and m.yearid = t.yearid
 order by yearid desc*/
+
+
+
+/*Question 10- Analyze all the colleges in the state of Tennessee. Which college has had the 
+				most success in the major leagues. Use whatever metric for success you like 
+				- number of players, number of games, salaries, world series wins, etc.*/
+				
+/*select s.schoolid, s.schoolname, count(cp.playerid) as player_count
+from collegeplaying as cp
+join schools as s
+on s.schoolid = cp.schoolid
+where schoolstate = 'TN' 
+group by s.schoolid
+order by player_count desc*/
+
+
+/*Question 11- Is there any correlation between number of wins and team salary? 
+				Use data from 2000 and later to answer this question. 
+				As you do this analysis, keep in mind that salaries across the 
+				whole league tend to increase together, 
+				so you may want to look on a year-by-year basis.*/
+				
+				
+/*select t.teamid, t.yearid, sum(w)/count(distinct playerid) as w_sum, sum(salary) as s_sum
+from salaries as s
+join teams as t
+on s.teamid = t.teamid and s.yearid = t.yearid
+where t.yearid > '1999'
+group by t.teamid, t.yearid
+order by t.yearid desc, w_sum desc*/
+
+
+
+/*Question 12- In this question, you will explore the connection between number of wins and attendance.
+				Does there appear to be any correlation between attendance 
+				at home games and number of wins?
+				Do teams that win the world series see a boost in 
+				attendance the following year? What about teams that 
+				made the playoffs? Making the playoffs means either being a 
+				division winner or a wild card winner.*/
+				
+				
+/*Question 13- It is thought that since left-handed pitchers are more rare, 
+				causing batters to face them less often, that they are more effective. 
+				Investigate this claim and present evidence to either support or dispute this claim. 
+				First, determine just how rare left-handed pitchers are compared with right-handed pitchers. 
+				Are left-handed pitchers more likely to win the Cy Young Award? 
+				Are they more likely to make it into the hall of fame?*/
+
+select peo.namefirst||' '||peo.namelast as name, 
+			sum(hbp) as hit, 
+			round(sum(cast(hbp as decimal))/sum(cast(bfp as decimal))*100, 2)||'%' as beaned_ratio, 
+			sum(so) as outs, 
+			round(sum(cast(so as decimal))/sum(cast(bfp as decimal))*100, 2)||'%' as outs_ratio, 
+			throws,
+			(select round(sum(cast(case when throws = 'L' then '1' else '0' end as decimal))/count(*), 2) 
+			 as lefty_ratio from people)
+from pitching as pit
+join people as peo
+on pit.playerid = peo.playerid
+where bfp >0
+group by throws, peo.namefirst, peo.namelast
+having sum(so) > '1000'
+order by outs_ratio desc
 
