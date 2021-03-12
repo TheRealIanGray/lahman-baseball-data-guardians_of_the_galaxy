@@ -375,13 +375,43 @@ SELECT p.park_name, sum(attendance)/sum(games) AS att_per_game, p.city
 FROM homegames
 JOIN p
 using (park)
-WHERE year='2016'
+WHERE year='2016' and games>9
 GROUP BY p.park_name, p.city
 ORDER BY att_per_game DESC
 LIMIT 5;
+/*
+"Dodger Stadium"	45719	"Los Angeles"
+"Busch Stadium III"	42524	"St. Louis"
+"Rogers Centre"		41877	"Toronto"
+"AT&T Park"			41546	"San Francisco"
+"Wrigley Field"		39906	"Chicago"
+*/
+
 
 -- Top Attendance by teams 
 WITH t AS (
+			SELECT t.name, teamid
+			FROM teams)
+--CTE for team info but didn't need it.
+
+
+SELECT t.name, sum(h.attendance)/sum(h.games) AS att_per_game
+FROM homegames as h
+JOIN teams AS t
+ON h.team = t.teamid
+WHERE year='2016' and h.games >9
+GROUP BY t.name
+ORDER BY att_per_game DESC
+LIMIT 5;
+/*"Los Angeles Dodgers"	45719
+"St. Louis Browns"		42524
+"St. Louis Cardinals"	42524
+"St. Louis Perfectos"	42524
+"Toronto Blue Jays"		41877
+*/
+
+-- Lowest Attendance by park
+WITH p AS (
 			SELECT park_name, park, city
 			FROM parks)
 --CTE for park info
@@ -389,7 +419,120 @@ SELECT p.park_name, sum(attendance)/sum(games) AS att_per_game, p.city
 FROM homegames
 JOIN p
 using (park)
-WHERE year='2016'
+WHERE year='2016' and games>9
 GROUP BY p.park_name, p.city
-ORDER BY att_per_game DESC
+ORDER BY att_per_game
 LIMIT 5;
+/*
+"Tropicana Field"					15878	"St. Petersburg"
+"Oakland-Alameda County Coliseum"	18784	"Oakland"
+"Progressive Field"					19650	"Cleveland"
+"Marlins Park"						21405	"Miami"
+"U.S. Cellular Field"				21559	"Chicago"
+*/
+
+--Lowest attendance by teams
+SELECT t.name, sum(h.attendance)/sum(h.games) AS att_per_game
+FROM homegames as h
+JOIN teams AS t
+ON h.team = t.teamid
+WHERE year='2016' and h.games >9
+GROUP BY t.name
+ORDER BY att_per_game
+LIMIT 5;
+
+/*
+"Tampa Bay Devil Rays"	15878
+"Tampa Bay Rays"		15878
+"Oakland Athletics"		18784
+"Cleveland Bronchos"	19650
+"Cleveland Naps"		19650
+*/
+
+/* Q9. 
+Which managers have won the TSN Manager of the Year award in both the National League (NL) and the American League (AL)? 
+Give their full name and the teams that they were managing when they won the award.
+*/
+
+-- Identify the type of wards
+SELECT distinct lgid
+FROM awardsmanagers
+--AL, NL, ML
+
+-- Create CTE for National Leagues and American leagues
+WITH AL AS(
+			
+	
+WITH tsn AS(SELECT *
+			FROM awardsmanagers
+			WHERE awardid ilike '%TSN%' 
+				AND lgid='AL'
+				AND playerid IN (
+					SELECT playerid
+					FROM awardsmanagers
+					WHERE awardid ilike '%TSN%' 
+					AND lgid='NL')
+			UNION
+			SELECT *
+					FROM awardsmanagers
+					WHERE awardid ilike '%TSN%' 
+						AND lgid='NL'
+						AND playerid IN (
+							SELECT playerid
+							FROM awardsmanagers
+							WHERE awardid ilike '%TSN%' 
+							AND lgid='AL'))
+	
+SELECT tsn.yearid, tsn.lgid, p.namefirst ||' '|| p.namelast, t.name 
+FROM tsn
+JOIN people as p
+ON tsn.playerid = p.playerid
+JOIN managers as m
+ON p.playerid=m.playerid AND tsn.yearid=m.yearid
+JOIN teams as t
+ON m.teamid=t.teamid AND m.yearid=t.yearid
+
+	/*
+1988	"NL"	"Jim Leyland"	"Pittsburgh Pirates"
+1990	"NL"	"Jim Leyland"	"Pittsburgh Pirates"
+1992	"NL"	"Jim Leyland"	"Pittsburgh Pirates"
+1997	"AL"	"Davey Johnson"	"Baltimore Orioles"
+2006	"AL"	"Jim Leyland"	"Detroit Tigers"
+2012	"NL"	"Davey Johnson"	"Washington Nationals"
+	*/
+
+/* 10.
+Analyze all the colleges in the state of Tennessee. Which college has had the most success in the major leagues.
+Use whatever metric for success you like - number of players, number of games, salaries, world series wins, etc.
+	
+*/
+	
+SELECT *
+FROM schools
+WHERE schoolstate ='TN'
+
+--- Number of Players successful in major leagues from TN state 
+SELECT count (distinct playerid) AS player_count, schoolid, s.schoolname
+FROM collegeplaying
+JOIN schools AS s
+USING(schoolid)
+WHERE schoolid IN
+	(SELECT schoolid
+		FROM schools
+		WHERE schoolstate ='TN')
+GROUP BY schoolid, s.schoolname
+ORDER BY player_count DESC
+	
+/* Q11
+Is there any correlation between number of wins and team salary? Use data from 2000 and later to answer this question. 
+As you do this analysis, keep in mind that salaries across the whole league tend to increase together, 
+so you may want to look on a year-by-year basis.
+*/	
+	
+SELECT distinct t.teamid, t.name, t.w as win, t.yearid, sum(salary) as salary --OVER(partition by yearid) AS salary --, sum(salary) OVER(group by teamid Partition by yearid) AS yearly_sal  
+FROM teams as t
+JOIN salaries as S
+USING (teamid, yearid)
+WHERE t.yearid >= 2000
+Group BY t.teamid, t.name, t.w, t.yearid
+ORDER BY teamid, yearid
