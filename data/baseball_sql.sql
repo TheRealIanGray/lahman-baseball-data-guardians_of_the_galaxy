@@ -141,7 +141,9 @@ FROM teams
 WHERE yearid >='1970' AND yearid<>'1981'
 GROUP BY yearid,  wswin
 ORDER BY yearid)*/
-				
+	
+	
+	
 /*Question 8- Using the attendance figures from the homegames table, find the teams and parks which had the 
 				top 5 average attendance per game in 2016 
 				(where average attendance is defined as total attendance divided by number of games). 
@@ -183,11 +185,12 @@ limit 5*/
 --had to include duplicated/reversed CTE to get distinct year values for when the two awards were won each year
 --instead of just a single year, which would have meant only finding one of the teams coached at the time.
 
+
 /*with nl as (select playerid, yearid
-from awardsmanagers
-where awardid = 'TSN Manager of the Year'
-and lgid = 'NL'
-and playerid in (select playerid
+			from awardsmanagers
+			where awardid = 'TSN Manager of the Year'
+			and lgid = 'NL'
+			and playerid in (select playerid
 				from awardsmanagers
 				where awardid = 'TSN Manager of the Year'
 				and lgid = 'AL')),
@@ -199,36 +202,27 @@ and playerid in (select playerid
 				from awardsmanagers
 				where awardid = 'TSN Manager of the Year'
 				and lgid = 'NL'))
-select namelast, namefirst, m.yearid, name
-from nl
+select namelast||' '||namefirst, m.yearid, name
+from (select *
+	 from nl 
+	 union all
+	 select *
+	 from al) as something
 join people as p
-on nl.playerid = p.playerid
+on something.playerid = p.playerid
 join managers as m
 on m.playerid = p.playerid
-and m.yearid = nl.yearid
-join teams as t
-on m.teamid = t.teamid
-and m.yearid = t.yearid
-union all
-select namelast, namefirst, m.yearid, name
-from al
-join people as p
-on al.playerid = p.playerid
-join managers as m
-on m.playerid = p.playerid
-and m.yearid = al.yearid
+and m.yearid = something.yearid
 join teams as t
 on m.teamid = t.teamid
 and m.yearid = t.yearid
 order by yearid desc*/
 
-
-
 /*Question 10- Analyze all the colleges in the state of Tennessee. Which college has had the 
 				most success in the major leagues. Use whatever metric for success you like 
 				- number of players, number of games, salaries, world series wins, etc.*/
 				
-/*select s.schoolid, s.schoolname, count(cp.playerid) as player_count
+/*select s.schoolid, s.schoolname, count(distinct cp.playerid) as player_count
 from collegeplaying as cp
 join schools as s
 on s.schoolid = cp.schoolid
@@ -270,7 +264,7 @@ order by t.yearid desc, w_sum desc*/
 				Are left-handed pitchers more likely to win the Cy Young Award? 
 				Are they more likely to make it into the hall of fame?*/
 
-select peo.namefirst||' '||peo.namelast as name, 
+/*select peo.namefirst||' '||peo.namelast as name, 
 			sum(hbp) as hit, 
 			round(sum(cast(hbp as decimal))/sum(cast(bfp as decimal))*100, 2)||'%' as beaned_ratio, 
 			sum(so) as outs, 
@@ -284,5 +278,5 @@ on pit.playerid = peo.playerid
 where bfp >0
 group by throws, peo.namefirst, peo.namelast
 having sum(so) > '1000'
-order by outs_ratio desc
+order by outs_ratio desc*/
 
